@@ -1,0 +1,79 @@
+# ----------------------
+# Python
+# ----------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.env
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Packaging / build
+build/
+dist/
+.eggs/
+*.egg-info/
+*.egg
+
+# Logs
+*.log
+
+# ----------------------
+# VS Code
+# ----------------------
+.vscode/
+
+# ----------------------
+# OS files
+# ----------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------
+# Jupyter (if used later)
+# ----------------------
+.ipynb_checkpoints/
+
+# ----------------------
+# Model artifacts
+# ----------------------
+Model/
+*.h5
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.joblib
+
+# ----------------------
+# Data / recordings
+# (important for biometrics)
+# ----------------------
+data/
+datasets/
+recordings/
+*.csv
+*.json
+
+# ----------------------
+# Secrets
+# ----------------------
+secrets.json
+*.key
+*.pem
+.env.*
+
+# ----------------------
+# Test / coverage
+# ----------------------
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
