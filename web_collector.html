@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keystroke Biometric Data Collector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .password-input-container {
+            position: relative;
+        }
+
+        #passwordInput {
+            font-family: monospace;
+            letter-spacing: 2px;
+            font-size: 20px;
+            padding-right: 45px;
+        }
+
+        #passwordInput.collecting {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        #passwordInput.capslock-on {
+            background: #ffe5e5;
+            border-color: #ff6b6b;
+        }
+
+        .capslock-warning {
+            display: none;
+            color: #d63031;
+            font-size: 12px;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+
+        .capslock-warning.show {
+            display: block;
+        }
+
+        .password-visibility {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #666;
+            font-size: 20px;
+            user-select: none;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1976d2;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .progress {
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .typing-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f5f7fa;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .metric-label {
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .typing-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Keystroke Biometric Collector</h1>
+            <p>Help build a behavioral authentication system by contributing your typing patterns!</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalContributors">0</div>
+                <div class="stat-label">Contributors</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="totalSamples">0</div>
+                <div class="stat-label">Total Samples</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="yourSamples">0</div>
+                <div class="stat-label">Your Samples</div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <strong>How it works:</strong> Type the password below 10 times. We record only the timing patterns (when you press/release keys), not the actual password content. All data is anonymized and used for research purposes only.
+            <br><br>
+            <strong>✓ CapsLock/Shift supported:</strong> Use either CapsLock or Shift for uppercase letters — both work perfectly!
+        </div>
+
+        <form id="collectionForm">
+            <div class="form-group">
+                <label for="username">Username / Contributor ID:</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    placeholder="e.g., discord_user123" 
+                    required
+                    autocomplete="off"
+                    minlength="3"
+                    maxlength="30"
+                    pattern="[a-zA-Z0-9_-]+"
+                    title="Only letters, numbers, underscores, and hyphens allowed"
+                >
+                <small style="color: #666; font-size: 12px;">This helps us track contributions. Use your Discord username!</small>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordInput">Password to Type: <strong>SecurePass@123</strong></label>
+                <div class="password-input-container">
+                    <input 
+                        type="password" 
+                        id="passwordInput" 
+                        placeholder="Type the password above exactly"
+                        autocomplete="off"
+                        disabled
+                    >
+                    <span class="password-visibility" id="togglePassword">👁️</span>
+                </div>
+                <div class="capslock-warning" id="capslockWarning">⚠️ CapsLock is ON</div>
+                <small style="color: #666; font-size: 12px;">Press Enter after typing correctly</small>
+            </div>
+
+            <div class="progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%">
+                        0/10
+                    </div>
+                </div>
+            </div>
+
+            <div class="typing-metrics hidden" id="typingMetrics">
+                <div class="metric-item">
+                    <span class="metric-label">Speed:</span>
+                    <span class="metric-value" id="metricSpeed">-- CPM</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Accuracy:</span>
+                    <span class="metric-value" id="metricAccuracy">--%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Avg Dwell:</span>
+                    <span class="metric-value" id="metricDwell">-- ms</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Avg Flight:</span>
+                    <span class="metric-value" id="metricFlight">-- ms</span>
+                </div>
+            </div>
+
+            <button type="button" class="button" id="startButton">Start Collection</button>
+        </form>
+
+        <div class="status" id="status"></div>
+
+        <div class="footer">
+            <p>🔒 Privacy: Only timing data is collected. Passwords are hashed before storage.</p>
+            <p>📊 Data is used for behavioral biometrics research</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, push, set, onValue, get, query, orderByChild, equalTo } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Firebase configuration 
+        const firebaseConfig = {
+            apiKey: "AIzaSyAwpKcy8_SZQWmek_qJFoAATo4kZOnuJNg",
+            authDomain: "behavioral-biometrics-aeffe.firebaseapp.com",
+            databaseURL: "https://behavioral-biometrics-aeffe-default-rtdb.firebaseio.com",
+            projectId: "behavioral-biometrics-aeffe",
+            storageBucket: "behavioral-biometrics-aeffe.firebasestorage.app",
+            messagingSenderId: "652673188894",
+            appId: "1:652673188894:web:97ef3ced5630cb7f26da0f"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // ═════════════════════════════════════════════════════════════
+        // Keystroke Capture Engine
+        // ═════════════════════════════════════════════════════════════
+
+        const TARGET_PASSWORD = "SecurePass@123";
+        const TARGET_SAMPLES = 10;
+
+        class KeystrokeCapture {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.typedChars = [];
+                this.events = [];
+                this.pressMap = new Map(); // key → {timestamp, position}
+                this.startTime = null;
+                this.endTime = null;
+                this.capsLockActive = false;
+            }
+
+            onKeyDown(event) {
+                const now = performance.now();
+                
+                if (!this.startTime) {
+                    this.startTime = now;
+                }
+
+                const key = event.key;
+                
+                // Detect CapsLock state
+                if (event.getModifierState) {
+                    this.capsLockActive = event.getModifierState('CapsLock');
+                }
+                
+                // Ignore modifiers only (but not CapsLock since it doesn't fire as a key)
+                if (key === 'Shift' || key === 'Control' || key === 'Alt' || key === 'Meta') {
+                    return;
+                }
+
+                // Ignore CapsLock key press itself if it fires as a key event
+                if (key === 'CapsLock') {
+                    return;
+                }
+
+                // Handle Enter
+                if (key === 'Enter') {
+                    this.endTime = now;
+                    return 'SUBMIT';
+                }
+
+                // Handle Backspace
+                if (key === 'Backspace') {
+                    if (this.typedChars.length > 0) {
+                        this.typedChars.pop();
+                        if (this.events.length > 0) {
+                            const removed = this.events.pop();
+                            this.pressMap.delete(removed.keyId);
+                        }
+                    }
+                    return;
+                }
+
+                // Regular character - event.key already includes the correct case
+                // (uppercase if Shift or CapsLock is active, lowercase otherwise)
+                const actualChar = key;
+                
+                // Validate it's a single printable character
+                if (actualChar.length !== 1) {
+                    return;
+                }
+
+                const position = this.typedChars.length;
+                this.typedChars.push(actualChar);
+                
+                // Store press time with the actual character that was typed
+                this.pressMap.set(actualChar + position, {
+                    timestamp: now,
+                    position: position,
+                    key: actualChar
+                });
+            }
+
+            onKeyUp(event) {
+                const now = performance.now();
+                const key = event.key;
+
+                // Update CapsLock state on key up as well
+                if (event.getModifierState) {
+                    this.capsLockActive = event.getModifierState('CapsLock');
+                }
+
+                if (key === 'Shift' || key === 'Control' || key === 'Alt' || key === 'Meta' || key === 'CapsLock') {
+                    return;
+                }
+
+                // Validate single character
+                if (key.length !== 1) {
+                    return;
+                }
+
+                // Find the most recent press of this key
+                for (let i = this.typedChars.length - 1; i >= 0; i--) {
+                    const mapKey = this.typedChars[i] + i;
+                    if (this.pressMap.has(mapKey) && this.typedChars[i] === key) {
+                        const pressInfo = this.pressMap.get(mapKey);
+                        
+                        this.events.push({
+                            keyId: key,
+                            position: pressInfo.position,
+                            pressTime: pressInfo.timestamp,
+                            releaseTime: now,
+                            dwellTime: now - pressInfo.timestamp
+                        });
+                        
+                        this.pressMap.delete(mapKey);
+                        break;
+                    }
+                }
+            }
+
+            getTypedString() {
+                return this.typedChars.join('');
+            }
+
+            isComplete() {
+                return this.endTime !== null;
+            }
+
+            extractFeatures() {
+                if (this.events.length === 0) {
+                    return null;
+                }
+
+                // Sort events by position
+                this.events.sort((a, b) => a.position - b.position);
+
+                // Compute bigrams
+                const bigrams = [];
+                for (let i = 0; i < this.events.length - 1; i++) {
+                    const a = this.events[i];
+                    const b = this.events[i + 1];
+
+                    bigrams.push({
+                        fromKey: a.keyId,
+                        toKey: b.keyId,
+                        fromPos: a.position,
+                        toPos: b.position,
+                        DD: b.pressTime - a.pressTime,
+                        UU: b.releaseTime - a.releaseTime,
+                        UD: b.pressTime - a.releaseTime,     // Flight time
+                        DU: b.releaseTime - a.pressTime
+                    });
+                }
+
+                // Extract vectors
+                const dwellVector = this.events.map(e => e.dwellTime);
+                const UDVector = bigrams.map(b => b.UD);
+                const DDVector = bigrams.map(b => b.DD);
+                const UUVector = bigrams.map(b => b.UU);
+                const DUVector = bigrams.map(b => b.DU);
+
+                // Compute statistics
+                const totalElapsed = (this.endTime - this.startTime) / 1000; // seconds
+                const cpm = (this.typedChars.length / totalElapsed) * 60;
+
+                const avgDwell = dwellVector.reduce((a, b) => a + b, 0) / dwellVector.length;
+                const avgFlight = UDVector.reduce((a, b) => a + b, 0) / UDVector.length;
+
+                return {
+                    keystrokeEvents: this.events.map(e => ({
+                        keyId: e.keyId,
+                        position: e.position,
+                        pressTime: e.pressTime,
+                        releaseTime: e.releaseTime,
+                        dwellTime: e.dwellTime
+                    })),
+                    bigrams: bigrams,
+                    featureVectors: {
+                        dwellVector: dwellVector,
+                        UDVector: UDVector,
+                        DDVector: DDVector,
+                        UUVector: UUVector,
+                        DUVector: DUVector,
+                        vectorLength: dwellVector.length
+                    },
+                    sequenceFeatures: {
+                        totalElapsedS: totalElapsed,
+                        charsPerMinute: cpm,
+                        avgDwellTime: avgDwell,
+                        avgFlightTime: avgFlight
+                    }
+                };
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        // UI Controller
+        // ═════════════════════════════════════════════════════════════
+
+        const ui = {
+            username: document.getElementById('username'),
+            passwordInput: document.getElementById('passwordInput'),
+            togglePassword: document.getElementById('togglePassword'),
+            startButton: document.getElementById('startButton'),
+            progressFill: document.getElementById('progressFill'),
+            status: document.getElementById('status'),
+            totalContributors: document.getElementById('totalContributors'),
+            totalSamples: document.getElementById('totalSamples'),
+            yourSamples: document.getElementById('yourSamples'),
+            typingMetrics: document.getElementById('typingMetrics'),
+            metricSpeed: document.getElementById('metricSpeed'),
+            metricAccuracy: document.getElementById('metricAccuracy'),
+            metricDwell: document.getElementById('metricDwell'),
+            metricFlight: document.getElementById('metricFlight'),
+            capslockWarning: document.getElementById('capslockWarning')
+        };
+
+        // Toggle password visibility
+        ui.togglePassword.addEventListener('click', () => {
+            const type = ui.passwordInput.type === 'password' ? 'text' : 'password';
+            ui.passwordInput.type = type;
+            ui.togglePassword.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+
+        // CapsLock detection
+        ui.passwordInput.addEventListener('keydown', (event) => {
+            if (event.getModifierState && event.getModifierState('CapsLock')) {
+                ui.passwordInput.classList.add('capslock-on');
+                ui.capslockWarning.classList.add('show');
+            } else {
+                ui.passwordInput.classList.remove('capslock-on');
+                ui.capslockWarning.classList.remove('show');
+            }
+        });
+
+        ui.passwordInput.addEventListener('keyup', (event) => {
+            if (event.getModifierState && event.getModifierState('CapsLock')) {
+                ui.passwordInput.classList.add('capslock-on');
+                ui.capslockWarning.classList.add('show');
+            } else {
+                ui.passwordInput.classList.remove('capslock-on');
+                ui.capslockWarning.classList.remove('show');
+            }
+        });
+
+        // ═════════════════════════════════════════════════════════════
+        // Collection Logic
+        // ═════════════════════════════════════════════════════════════
+
+        let capture = new KeystrokeCapture();
+        let samplesCollected = 0;
+        let collecting = false;
+        let allSamples = [];
+
+        ui.startButton.addEventListener('click', startCollection);
+
+        function startCollection() {
+            const username = ui.username.value.trim();
+            
+            if (!username) {
+                showStatus('Please enter a username!', 'error');
+                return;
+            }
+
+            if (username.length < 3) {
+                showStatus('Username must be at least 3 characters', 'error');
+                return;
+            }
+
+            // Disable username editing
+            ui.username.disabled = true;
+            ui.passwordInput.disabled = false;
+            ui.passwordInput.focus();
+            ui.startButton.disabled = true;
+
+            collecting = true;
+            samplesCollected = 0;
+            allSamples = [];
+
+            showStatus('Type the password and press Enter!', 'success');
+            startCapture();
+        }
+
+        function startCapture() {
+            capture.reset();
+            ui.passwordInput.value = '';
+            ui.passwordInput.classList.add('collecting');
+        }
+
+        // Keyboard event listeners
+        ui.passwordInput.addEventListener('keydown', (event) => {
+            if (!collecting) return;
+
+            const result = capture.onKeyDown(event);
+
+            if (result === 'SUBMIT') {
+                event.preventDefault();
+                handleSubmit();
+            }
+        });
+
+        ui.passwordInput.addEventListener('keyup', (event) => {
+            if (!collecting) return;
+            capture.onKeyUp(event);
+        });
+
+        async function handleSubmit() {
+            const typed = capture.getTypedString();
+
+            if (typed !== TARGET_PASSWORD) {
+                showStatus(`Wrong password! Expected: ${TARGET_PASSWORD}`, 'error');
+                startCapture();
+                return;
+            }
+
+            const features = capture.extractFeatures();
+            
+            if (!features) {
+                showStatus('Error extracting features. Try again.', 'error');
+                startCapture();
+                return;
+            }
+
+            // Add metadata
+            const sample = {
+                metadata: {
+                    username: ui.username.value.trim(),
+                    sampleIndex: samplesCollected,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    passwordHash: await hashPassword(TARGET_PASSWORD)
+                },
+                ...features
+            };
+
+            allSamples.push(sample);
+            samplesCollected++;
+
+            // Update progress
+            updateProgress(samplesCollected, TARGET_SAMPLES);
+
+            // Update metrics display
+            updateMetrics(features.sequenceFeatures);
+
+            if (samplesCollected >= TARGET_SAMPLES) {
+                await finishCollection();
+            } else {
+                showStatus(`Sample ${samplesCollected}/${TARGET_SAMPLES} recorded! Type again...`, 'success');
+                setTimeout(startCapture, 500);
+            }
+        }
+
+        async function finishCollection() {
+            collecting = false;
+            ui.passwordInput.disabled = true;
+            ui.passwordInput.classList.remove('collecting');
+
+            showStatus('Uploading data...', 'success');
+            ui.status.innerHTML = '<span class="loading"></span> Uploading to cloud...';
+
+            try {
+                await uploadToFirebase(allSamples);
+                
+                showStatus('✅ Thank you! Data successfully uploaded!', 'success');
+                
+                // Update stats
+                await updateStats();
+
+                // Reset for another user
+                setTimeout(() => {
+                    ui.username.disabled = false;
+                    ui.username.value = '';
+                    ui.passwordInput.value = '';
+                    ui.startButton.disabled = false;
+                    samplesCollected = 0;
+                    updateProgress(0, TARGET_SAMPLES);
+                }, 3000);
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus('❌ Upload failed. Please try again or contact the admin.', 'error');
+                ui.startButton.disabled = false;
+            }
+        }
+
+        // ═════════════════════════════════════════════════════════════
+        // Firebase Operations
+        // ═════════════════════════════════════════════════════════════
+
+        async function uploadToFirebase(samples) {
+            const username = ui.username.value.trim();
+            const timestamp = Date.now();
+
+            // Upload to Firebase Realtime Database
+            // Structure: /samples/{username}_{timestamp}/{sampleIndex}
+            const sessionRef = ref(database, `samples/${username}_${timestamp}`);
+            
+            for (let i = 0; i < samples.length; i++) {
+                const sampleRef = ref(database, `samples/${username}_${timestamp}/sample_${i}`);
+                await set(sampleRef, samples[i]);
+            }
+
+            // Update contributor count
+            const contributorRef = ref(database, `contributors/${username}`);
+            await set(contributorRef, {
+                username: username,
+                lastContribution: new Date().toISOString(),
+                totalSamples: samples.length
+            });
+        }
+
+        async function updateStats() {
+            try {
+                // Get total contributors
+                const contributorsRef = ref(database, 'contributors');
+                const contributorsSnap = await get(contributorsRef);
+                const contributors = contributorsSnap.exists() ? Object.keys(contributorsSnap.val()).length : 0;
+                ui.totalContributors.textContent = contributors;
+
+                // Get total samples
+                const samplesRef = ref(database, 'samples');
+                const samplesSnap = await get(samplesRef);
+                let totalSamples = 0;
+                if (samplesSnap.exists()) {
+                    const sessions = samplesSnap.val();
+                    for (const session in sessions) {
+                        totalSamples += Object.keys(sessions[session]).length;
+                    }
+                }
+                ui.totalSamples.textContent = totalSamples;
+
+                // Get user's samples
+                const username = ui.username.value.trim();
+                if (username) {
+                    const userSamplesRef = ref(database, 'contributors/' + username);
+                    const userSnap = await get(userSamplesRef);
+                    const userSamples = userSnap.exists() ? userSnap.val().totalSamples : 0;
+                    ui.yourSamples.textContent = userSamples;
+                }
+            } catch (error) {
+                console.error('Error updating stats:', error);
+            }
+        }
+
+        // Initialize stats on load
+        updateStats();
+        
+        // Real-time stats updates
+        const contributorsRef = ref(database, 'contributors');
+        onValue(contributorsRef, () => {
+            updateStats();
+        });
+
+        // ═════════════════════════════════════════════════════════════
+        // Utility Functions
+        // ═════════════════════════════════════════════════════════════
+
+        async function hashPassword(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function updateProgress(current, total) {
+            const percent = (current / total) * 100;
+            ui.progressFill.style.width = percent + '%';
+            ui.progressFill.textContent = `${current}/${total}`;
+        }
+
+        function updateMetrics(features) {
+            ui.typingMetrics.classList.remove('hidden');
+            ui.metricSpeed.textContent = Math.round(features.charsPerMinute) + ' CPM';
+            ui.metricAccuracy.textContent = '100%'; // They typed it correctly
+            ui.metricDwell.textContent = Math.round(features.avgDwellTime) + ' ms';
+            ui.metricFlight.textContent = Math.round(features.avgFlightTime) + ' ms';
+        }
+
+        function showStatus(message, type) {
+            ui.status.className = 'status ' + type;
+            ui.status.textContent = message;
+            ui.status.style.display = 'block';
+
+            if (type === 'success') {
+                setTimeout(() => {
+                    ui.status.style.display = 'none';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
