@@ -140,10 +140,22 @@ class LiveKeystrokeCapture:
         self._reset()
         print(prompt, end="", flush=True)
 
-        with pynput_keyboard.Listener(
+        listener = pynput_keyboard.Listener(
             on_press=self._on_press, on_release=self._on_release, suppress=True
-        ) as listener:
-            listener.join(timeout=self.timeout)
+        )
+        listener.start()
+        
+        start_time = time.perf_counter()
+        while not self.done and not self.aborted:
+            elapsed = time.perf_counter() - start_time
+            if elapsed > self.timeout:
+                self.aborted = True
+                listener.stop()
+                break
+            time.sleep(0.01)
+        
+        if not self.aborted and not self.done:
+            listener.stop()
 
         print() 
 
@@ -297,32 +309,25 @@ class KeystrokeAuthenticator:
             return None
 
         try:
-            from implement import local_model, local_scaler
+            # Try to load CNN model from implement.py
+            import sys
+            sys.path.insert(0, str(Path(path).parent.parent))
+            from core.implement import local_model, local_scaler
             
             print(f"[INFO] Using CNN model from implement.py")
             
-            class ModelWrapper:
-                def __init__(self, model, scaler):
-                    self.model = model
-                    self.scaler = scaler
-                    self.eval_mode = True
-                
-                def __call__(self, features):
-                    import torch
-                    if isinstance(features, np.ndarray):
-                        features = torch.from_numpy(features).float()
-                    return self.model(features.unsqueeze(0).unsqueeze(0)).squeeze(0).cpu().detach().numpy()
-            
-            return ModelWrapper(local_model, local_scaler)
+            # Return the model directly (no wrapper needed)
+            return local_model
         
-        except ImportError:
-            print("[WARN] Could not load CNN model from implement.py")
+        except Exception as e:
+            print(f"[WARN] Could not load CNN model: {e}")
             
             try:
+                # Fallback: try to load Siamese RNN
                 from siamese import SiameseRNNTriplet
                 
                 model = SiameseRNNTriplet(
-                    input_dim=2,        # dwell + UD
+                    input_dim=2,
                     hidden_dim1=128,
                     hidden_dim2=64,
                     embedding_dim=32,
@@ -335,13 +340,9 @@ class KeystrokeAuthenticator:
                 print(f"[INFO] Model loaded from {path}")
                 return model
             
-            except Exception as e:
-                print(f"[ERROR] Failed to load model: {e}")
+            except Exception as e2:
+                print(f"[ERROR] Failed to load any model: {e2}")
                 return None
-        
-        except Exception as e:
-            print(f"[ERROR] Model loading failed: {e}")
-            return None
 
     def _hash_password(self, password: str) -> str:
         return hashlib.sha256(password.encode("utf-8")).hexdigest()
@@ -350,14 +351,28 @@ class KeystrokeAuthenticator:
         if self.model is None:
             raise RuntimeError("Model not loaded. Cannot generate embedding.")
 
-        seq = normalize_features(features, self.norm_stats)
-        seq_tensor = torch.from_numpy(seq).unsqueeze(0) 
-        length = torch.tensor([seq.shape[0]], dtype=torch.long)
-
+        # Extract dwell time (primary keystroke feature)
+        dwell_vec = np.array(features.get("dwell_vector", []), dtype=np.float32)
+        
+        if len(dwell_vec) == 0:
+            raise RuntimeError("No keystroke features extracted.")
+        
+        # Normalize if stats available
+        if self.norm_stats and "mean" in self.norm_stats:
+            mean = self.norm_stats["mean"][0] if isinstance(self.norm_stats["mean"], list) else self.norm_stats["mean"]
+            std = self.norm_stats["std"][0] if isinstance(self.norm_stats["std"], list) else self.norm_stats["std"]
+            dwell_vec = (dwell_vec - mean) / (std + 1e-8)
+        
+        # Convert to tensor with shape (batch=1, length)
+        seq_tensor = torch.from_numpy(dwell_vec).float().unsqueeze(0)
+        
         with torch.no_grad():
-            embedding = self.model(seq_tensor, length) 
-
-        return embedding.squeeze(0).cpu().numpy()
+            embedding = self.model(seq_tensor)
+        
+        # embedding shape: (batch=1, embedding_dim)
+        # Extract single sample and convert to numpy
+        result = embedding[0].cpu().numpy() if isinstance(embedding, torch.Tensor) else embedding[0]
+        return result
 
     def enroll_user(
         self,
