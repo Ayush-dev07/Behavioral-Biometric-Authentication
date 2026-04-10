@@ -1,36 +1,26 @@
-"""
-Configuration management for keystroke authentication system.
-Centralizes all settings for easy modification.
-"""
-
 import os
 from dataclasses import dataclass
 from typing import Optional
-
+from dotenv import load_dotenv
+load_dotenv()
 
 @dataclass
 class ModelConfig:
-    """Neural network model configuration."""
     
-    input_dim: int = 4              # Number of features per keystroke
-    hidden_dim1: int = 128          # First LSTM layer size
-    hidden_dim2: int = 64           # Second LSTM layer size
-    embedding_dim: int = 32         # Embedding vector size
+    input_dim: int = 4              
+    hidden_dim1: int = 128          
+    hidden_dim2: int = 64           
+    embedding_dim: int = 32         
     
-    # Training parameters
     learning_rate: float = 0.001
     batch_size: int = 32
     epochs: int = 50
     
-    # Triplet loss
-    margin: float = 0.2             # Triplet loss margin
-
+    margin: float = 0.2            
 
 @dataclass
 class AuthConfig:
-    """Authentication configuration."""
     
-    # Enrollment
     enrollment_samples: int = 3     # Number of samples for enrollment
     augment_enrollment: bool = True # Augment enrollment data
     augmentation_factor: int = 2    # Augmentations per sample
@@ -44,11 +34,8 @@ class AuthConfig:
     max_failed_attempts: int = 5    # Max failed attempts before lockout
     lockout_duration: int = 300     # Lockout duration in seconds
 
-
 @dataclass
 class ServerConfig:
-    """Flask server configuration."""
-    
     host: str = '0.0.0.0'
     port: int = 5000
     debug: bool = True
@@ -61,10 +48,8 @@ class ServerConfig:
     rate_limit_enabled: bool = True
     rate_limit_per_minute: int = 60
 
-
 @dataclass
 class StorageConfig:
-    """Data storage configuration."""
     
     data_dir: str = 'data'
     models_dir: str = 'models'
@@ -91,10 +76,7 @@ class StorageConfig:
     def model_path(self) -> str:
         return os.path.join(self.models_dir, self.model_file)
 
-
 class Config:
-    """Main configuration container."""
-    
     def __init__(self):
         self.model = ModelConfig()
         self.auth = AuthConfig()
@@ -103,18 +85,12 @@ class Config:
     
     @classmethod
     def from_env(cls) -> 'Config':
-        """
-        Load configuration from environment variables.
-        Useful for production deployment.
-        """
         config = cls()
         
-        # Server config from env
         config.server.host = os.getenv('SERVER_HOST', config.server.host)
         config.server.port = int(os.getenv('SERVER_PORT', config.server.port))
         config.server.debug = os.getenv('DEBUG', 'True').lower() == 'true'
         
-        # Auth config from env
         config.auth.global_threshold = float(
             os.getenv('GLOBAL_THRESHOLD', config.auth.global_threshold)
         )
@@ -122,7 +98,6 @@ class Config:
         return config
     
     def to_dict(self) -> dict:
-        """Convert config to dictionary."""
         return {
             'model': {
                 'input_dim': self.model.input_dim,
@@ -140,7 +115,4 @@ class Config:
                 'models_dir': self.storage.models_dir
             }
         }
-
-
-# Global config instance
 config = Config()
